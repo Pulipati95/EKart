@@ -1,31 +1,65 @@
 pipeline {
     agent any
+    tools{
+        maven 'maven3'
+        jdk 'jdk17'
+    }
     
-    tools { maven 'maven3.6'
-            jdk 'jdk11'
-            
+    environment{
+        SCANNER_HOME= tool 'sonar-scanner'
     }
 
     stages {
-        stage('git checkout') {
+        stage('Git Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/jaiswaladi246/Ekart.git'
+                git branch: 'main', url: 'https://github.com/Pulipati95/EKart.git'
             }
         }
-        
+    
+   
         stage('Compile') {
             steps {
                 sh "mvn compile"
-                
             }
         }
-        
-        stage('Hello') {
+    
+    
+        stage('Unit Tests') {
             steps {
-                echo 'Hello World'
+                sh "mvn test -DskipTests=true"
             }
         }
-        
-        
+        stage('Sonar Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=EKART -Dsonar.projectName=EKART \
+                    -Dsonar.java.binaries=. '''
+            }
+            }
+        }
+        stage('OWASP Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: ' --scan ./', odcInstallation: 'DC'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+        }
+        stage('Nexus') {
+            steps {
+                withMaven(globalMavenSettingsConfig: 'global-maven', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+                sh "mvn deploy -DskipTests=true"
+}
+            }
+        }
+        stage('Unit Tests') {
+            steps {
+                sh "mvn test -DskipTests=true"
+            }
+        }
     }
+    
 }
