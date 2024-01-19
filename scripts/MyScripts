@@ -1,0 +1,130 @@
+#TRIVY Installation:
+
+sudo apt-get install wget apt-transport-https gnupg lsb-release
+
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+
+sudo apt-get update
+
+sudo apt-get install trivy -y
+
+
+ 
+ # Kubernetes setup
+ 
+ #On Master and Worker
+ 
+ sudo apt-get update -y
+ sudo apt-get install docker.io -y
+ sudo service docker restart
+ sudo curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+ echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" >/etc/apt/sources.list.d/kubernetes.list
+ sudo apt-get update
+ sudo apt install kubeadm=1.20.0-00 kubelet=1.20.0-00 -y
+ 
+ #step -2:
+ 
+ #On Master node:
+ 
+   kubeadm init --pod-network-cidr=192.168.0.0/16
+   
+#step -3:
+ 
+#On Master node:
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config 
+
+
+# step -4 :
+
+# On Master node:
+
+kubectl apply -f https://docs.projectcalico.org/v3.20/manifests/calico.yaml
+
+#Create Service account
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins
+  namespace: webapps
+
+#Create Role for Service account
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-role
+  namespace: webapps
+rules:
+  - apiGroups:
+        - ""
+        - apps
+        - autoscaling
+        - batch
+        - extensions
+        - policy
+        - rbac.authorization.k8s.io
+    resources:
+      - pods
+      - componentstatuses
+      - configmaps
+      - daemonsets
+      - deployments
+      - events
+      - endpoints
+      - horizontalpodautoscalers
+      - ingress
+      - jobs
+      - limitranges
+      - namespaces
+      - nodes
+      - pods
+      - persistentvolumes
+      - persistentvolumeclaims
+      - resourcequotas
+      - replicasets
+      - replicationcontrollers
+      - serviceaccounts
+      - services
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]  
+
+
+# Role Binding
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-rolebinding
+  namespace: webapps
+subjects:
+- kind: ServiceAccount
+  namespace: webapps 
+  name: jenkins
+roleRef:
+  kind: Role 
+  name: app-role 
+  apiGroup: rbac.authorization.k8s.io
+
+  # Create secret 
+
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: mysecretname
+  annotations:
+    kubernetes.io/service-account.name: jenkins
+    
+
+
+
+
+
+
+
+
