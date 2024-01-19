@@ -36,13 +36,13 @@ pipeline {
                     -Dsonar.java.binaries=. '''
             }
             }
-        }
+                               }
         stage('OWASP Dependency Check') {
             steps {
                 dependencyCheck additionalArguments: ' --scan ./', odcInstallation: 'DC'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
+                }
+                                        }
         stage('Build') {
             steps {
                 sh "mvn package -DskipTests=true"
@@ -52,24 +52,25 @@ pipeline {
             steps {
                 withMaven(globalMavenSettingsConfig: 'global-maven', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
                 sh "mvn deploy -DskipTests=true"
-}
+
             }
+        }
         }
         stage('Docker build and tag Image') {
             steps {
                 script{
                   withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker'){
-                  sh "docker build -t bhargavd1995/EKart:latest -f docker/Dockerfile ."    
+                  sh "docker build -t bhargavd1995/ekart:latest -f docker/Dockerfile ."    
             }
         }
     }
 }
-       stage('Trivy scan') {
+      stage('Trivy scan') {
             steps {
-                sh "trivy image bhargavd1995/EKart:latest > trivy-report.txt"
+                sh "trivy image bhargavd1995/ekart:latest > trivy-report.txt"
             }
         }
-       stage('Docker Push') {
+      stage('Docker Push') {
             steps {
                 script{
                   withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker'){
@@ -78,10 +79,16 @@ pipeline {
         }
     }
 }
-    stage('Kubernetes deploy') {
-            steps {
-               withKubeConfig(caCertificate: ", clusterName:", contextName:", credentialsId:'k8-token', namespace:'webapps',restrictKubeConfigAccess:false,serverUrl:'https://172.31.8.162.6443'){
-               sh "kubectl apply -f deploymentservice.yml -n webapps"
-               sh "kubectl get svc -n webapps"
-            }
-        }
+
+      stage('Kubernetes deploy') {
+             steps {
+                 withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://172.31.8.162.6443') {
+                 sh "kubectl apply -f deploymentservice.yml -n webapps"
+                 sh "kubectl get svc -n webapps"
+}
+    
+    } 
+}
+    
+ }
+}
